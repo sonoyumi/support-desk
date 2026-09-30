@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% set active = 'tickets' %}
+{% block title %}Обращения{% endblock %}
+{% block content %}
+<div class="bar">
+  <div class="tabs">
+    {% for key, label in FILTERS.items() %}
+    <a href="/tickets?f={{ key }}" class="tab {{ 'on' if f == key }} {{ 'hot' if key == 'overdue' and counts[key] }}">
+      {{ label }} <b>{{ counts[key] }}</b></a>
+    {% endfor %}
+  </div>
+  <form class="search" method="get" action="/tickets">
+    <input type="hidden" name="f" value="{{ f }}">
+    <input name="q" value="{{ q }}" placeholder="Поиск: текст, имя или №">
+  </form>
+</div>
+{% if q %}<p class="muted">Поиск «{{ q }}»: найдено {{ rows|length }}</p>{% endif %}
+{% if rows %}
+<table class="list">
+  <thead><tr><th>№</th><th>Клиент</th><th>Тема и последнее сообщение</th><th>Статус</th><th>Оператор</th><th>SLA</th><th>Обновлено</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    {% set cls, label = sla(r['sla_due_at'], now) %}
+    <tr data-href="/tickets/{{ r['id'] }}">
+      <td class="num"><a href="/tickets/{{ r['id'] }}">#{{ r['id'] }}</a></td>
+      <td><b>{{ r['customer'] }}</b>{% if r['username'] %}<br><span class="muted">@{{ r['username'] }}</span>{% endif %}</td>
+      <td class="subject"><b>{{ r['subject'] }}</b><br><span class="muted">{{ (r['last_text'] or '')[:110] }}</span></td>
+      <td><span class="st st-{{ r['status'] }}">{{ STATUS[r['status']] }}</span></td>
+      <td>{{ r['assignee'] or '—' }}</td>
+      <td>{% if label %}<span class="sla {{ cls }}">{{ label }}</span>{% elif r['rating'] %}{{ '⭐' * r['rating'] }}{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td class="muted">{{ r['updated_at']|t }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">{% if q %}Ничего не найдено.{% elif f == 'needs_reply' %}🎉 Все клиенты получили ответ.{% else %}Здесь пусто.{% endif %}</div>
+{% endif %}
+{% endblock %}

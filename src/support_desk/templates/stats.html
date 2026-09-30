@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% set active = 'stats' %}
+{% block title %}Статистика{% endblock %}
+{% block content %}
+<div class="bar">
+  <h1>Статистика за {{ s['days'] }} дн.</h1>
+  <div class="tabs">{% for d in (1, 7, 30, 90) %}<a class="tab {{ 'on' if s['days'] == d }}" href="/stats?days={{ d }}">{{ d }} дн.</a>{% endfor %}</div>
+</div>
+<div class="cards">
+  <div class="card kpi"><span>Новых обращений</span><b>{{ s['created'] }}</b></div>
+  <div class="card kpi"><span>Первый ответ, в среднем</span><b>{% if s['avg_first_reply_min'] is not none %}{{ s['avg_first_reply_min'] }} мин{% else %}—{% endif %}</b></div>
+  <div class="card kpi"><span>Ответ в пределах SLA ({{ sla_minutes }} мин)</span><b>{% if s['sla_percent'] is not none %}{{ s['sla_percent'] }}%{% else %}—{% endif %}</b></div>
+  <div class="card kpi"><span>Довольны (4–5 ⭐)</span><b>{% if s['csat_percent'] is not none %}{{ s['csat_percent'] }}%{% else %}—{% endif %}</b><em>{% if s['csat_avg'] %}средняя {{ s['csat_avg'] }}{% endif %}</em></div>
+</div>
+<div class="cards two">
+  <div class="card">
+    <h3>Сейчас</h3>
+    <table class="mini">{% for k, v in s['by_status'].items() %}<tr><td><span class="st st-{{ k }}">{{ STATUS[k] }}</span></td><td class="num">{{ v }}</td></tr>{% endfor %}
+      <tr><td>Не доставлено</td><td class="num {{ 'bad' if s['failed_deliveries'] }}">{{ s['failed_deliveries'] }}</td></tr></table>
+    <h3>Оценки</h3>
+    {% set total = s['ratings'].values()|sum %}
+    {% for score in (5, 4, 3, 2, 1) %}
+    <div class="hbar"><span>{{ "⭐" * score }}</span><progress max="{{ total or 1 }}" value="{{ s["ratings"][score] }}"></progress><b>{{ s["ratings"][score] }}</b></div>
+    {% endfor %}
+  </div>
+  <div class="card">
+    <h3>Операторы</h3>
+    <table class="mini"><tr><th>Оператор</th><th class="num">Ответов</th><th class="num">Обращений</th></tr>
+    {% for o in s['per_operator'] %}<tr><td>{{ o['name'] }}</td><td class="num">{{ o['replies'] }}</td><td class="num">{{ o['tickets'] }}</td></tr>{% endfor %}</table>
+  </div>
+</div>
+{% endblock %}

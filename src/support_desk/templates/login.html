@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Вход{% endblock %}
+{% block main_class %}center{% endblock %}
+{% block content %}
+<form method="post" action="/login" class="card login">
+  <h1>🎧 {{ company }}</h1>
+  <p class="muted">Панель операторов поддержки</p>
+  {% if err %}<p class="alert">{{ err }}</p>{% endif %}
+  <label>Логин<input name="login" autocomplete="username" required autofocus></label>
+  <label>Пароль<input name="password" type="password" autocomplete="current-password" required></label>
+  <input type="hidden" name="next" value="{{ next }}">
+  <button class="primary">Войти</button>
+</form>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% set active = 'tickets' %}
+{% block title %}№{{ t['id'] }}{% endblock %}
+{% block content %}
+<div class="ticket">
+  <section class="conv">
+    <div class="conv-head">
+      <a href="/tickets" class="muted">← Обращения</a>
+      <h1>#{{ t['id'] }} · {{ t['subject'] }}</h1>
+      <span class="st st-{{ t['status'] }}">{{ STATUS[t['status']] }}</span>
+      {% set cls, label = sla(t['sla_due_at'], now) %}{% if label %}<span class="sla {{ cls }}">{{ label }}</span>{% endif %}
+    </div>
+    {% if err %}<p class="alert">{{ err }}</p>{% endif %}
+    <div id="msgs" class="msgs" data-ticket="{{ t['id'] }}" data-last="{{ last_id }}">
+      {% for m in msgs %}
+      <div class="msg {{ m['kind'] }}">
+        <div class="meta">{% if m['kind'] == 'in' %}{{ t['customer'] }}{% elif m['kind'] == 'note' %}🔒 Заметка · {{ m['operator'] }}{% elif m['kind'] == 'rating' %}Бот · запрос оценки{% else %}{{ m['operator'] }}{% endif %} · {{ m['created_at']|t }}
+          {% if m['delivery'] == 'sent' %}<span class="ok">✓ доставлено</span>{% elif m['delivery'] in ('pending', 'sending') %}<span class="muted">⏳ отправляется</span>{% elif m['delivery'] == 'failed' %}<span class="bad">✕ {{ m['error'] }}</span>
+            <form method="post" action="/messages/{{ m['id'] }}/retry" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="ticket_id" value="{{ t['id'] }}"><button class="link">повторить</button></form>{% endif %}
+        </div>
+        <div class="text">{{ m['text'] }}</div>
+        {% if m['attachment'] %}<div class="att">📎 {{ m['attachment'].split(':')[0] }} (в Telegram)</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% if t['status'] != 'closed' %}
+    <form method="post" action="/tickets/{{ t['id'] }}/reply" class="reply">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {% if canned %}
+      <select id="canned" aria-label="Шаблон ответа">
+        <option value="">Шаблон ответа…</option>
+        {% for c in canned %}<option value="{{ c['body'] }}">{{ c['title'] }}</option>{% endfor %}
+      </select>
+      {% endif %}
+      <textarea name="text" id="reply" rows="4" maxlength="{{ limit }}" placeholder="Ответ клиенту — придёт ему в Telegram"></textarea>
+      <div class="row">
+        <button class="primary">Отправить</button>
+        <button class="secondary" name="close" value="1">Отправить и закрыть</button>
+      </div>
+    </form>
+    {% endif %}
+    <form method="post" action="/tickets/{{ t['id'] }}/note" class="note-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input name="text" placeholder="🔒 Внутренняя заметка — клиент её не увидит">
+      <button class="secondary">Добавить</button>
+    </form>
+  </section>
+  <aside class="side card">
+    <h3>Клиент</h3>
+    <p><b>{{ t['customer'] }}</b>{% if t['username'] %}<br><span class="muted">@{{ t['username'] }}</span>{% endif %}</p>
+    <p class="muted">Обращений всего: {{ t['customer_tickets'] }}</p>
+    <h3>Обращение</h3>
+    <dl>
+      <dt>Создано</dt><dd>{{ t['created_at']|t }}</dd>
+      <dt>Первый ответ</dt><dd>{% if t['first_reply_at'] %}через {{ (t['first_reply_at'] - t['created_at'])|dur }}{% else %}—{% endif %}</dd>
+      {% if t['closed_at'] %}<dt>Закрыто</dt><dd>{{ t['closed_at']|t }} {{ CLOSED_BY.get(t['closed_by'], '') }}</dd>{% endif %}
+      {% if t['rating'] %}<dt>Оценка</dt><dd>{{ '⭐' * t['rating'] }}</dd>{% endif %}
+    </dl>
+    <h3>Оператор</h3>
+    <form method="post" action="/tickets/{{ t['id'] }}/assign" class="assign">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <select name="operator_id">
+        <option value="">— не назначен —</option>
+        {% for o in operators %}<option value="{{ o['id'] }}" {{ 'selected' if t['assignee_id'] == o['id'] }}>{{ o['name'] }}</option>{% endfor %}
+      </select>
+      <button class="secondary">Назначить</button>
+    </form>
+    {% if t['assignee_id'] != me['id'] %}
+    <form method="post" action="/tickets/{{ t['id'] }}/assign"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="operator_id" value="me"><button class="link">Взять себе</button></form>
+    {% endif %}
+    <h3>Действия</h3>
+    {% if t['status'] != 'closed' %}
+    <form method="post" action="/tickets/{{ t['id'] }}/close" data-confirm="Закрыть обращение №{{ t['id'] }}?">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label class="check"><input type="checkbox" name="ask_rating" value="1" checked> попросить оценку</label>
+      <button class="secondary">Закрыть</button>
+    </form>
+    {% else %}
+    <form method="post" action="/tickets/{{ t['id'] }}/reopen"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="secondary">Открыть снова</button></form>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

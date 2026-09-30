@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% set active = 'canned' %}
+{% block title %}Шаблоны ответов{% endblock %}
+{% block content %}
+<h1>Шаблоны ответов</h1>
+<p class="muted">В тексте можно использовать <code>{name}</code> — имя клиента, <code>{ticket}</code> — номер обращения, <code>{operator}</code> — ваше имя.</p>
+<div class="cards two">
+  <div>
+  {% for c in items %}
+    <div class="card canned"><b>{{ c['title'] }}</b><div class="text">{{ c['body'] }}</div></div>
+  {% else %}
+    <div class="empty">Шаблонов пока нет.</div>
+  {% endfor %}
+  </div>
+  {% if me['is_admin'] %}
+  <form method="post" action="/canned" class="card">
+    <h3>Добавить или изменить</h3>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Название<input name="title" maxlength="60" required></label>
+    <label>Текст<textarea name="body" rows="6" required></textarea></label>
+    <button class="primary">Сохранить</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

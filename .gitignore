@@ -1,23 +1,21 @@
-# Секреты
+# Secrets
 .env
 .env.*
 !.env.example
 
-# Данные и логи
+# Tickets database
 data/
 *.db
-*.sqlite3
-*.log
+*.db-wal
+*.db-shm
 
 # Python
 __pycache__/
 *.py[cod]
 .venv/
-venv/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
-.mypy_cache/
 dist/
 build/
 
@@ -25,3 +23,6 @@ build/
 .idea/
 .vscode/
 .DS_Store
+
+# Claude Code worktrees
+.claude/

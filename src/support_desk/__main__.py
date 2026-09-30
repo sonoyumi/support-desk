@@ -1,13 +1,6 @@
-"""Точка входа: `python -m support_desk` или команда `support-desk`."""
+"""`python -m support_desk` — the same as the `support-desk` command."""
 
-
-def greet(name: str) -> str:
-    return f"Привет, {name}!"
-
-
-def main() -> None:
-    print(greet("мир"))
-
+from .cli import main
 
 if __name__ == "__main__":
     main()
