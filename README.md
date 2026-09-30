@@ -116,6 +116,7 @@ src/support_desk/
 
 [![Telegram](https://img.shields.io/badge/Telegram-write%20me-2CA5E0?logo=telegram&logoColor=white)](https://t.me/sonoyumiii)
 [![Email](https://img.shields.io/badge/Email-contact-EA4335?logo=gmail&logoColor=white)](mailto:sonoyumiii@gmail.com)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-profile-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/vladyslav-shokun/)
 
 > 💼 Customers write to you in Telegram and answers get lost? I'll set up a support desk like this for your team.
 
@@ -196,6 +197,7 @@ src/support_desk/
 
 [![Telegram](https://img.shields.io/badge/Telegram-scrivimi-2CA5E0?logo=telegram&logoColor=white)](https://t.me/sonoyumiii)
 [![Email](https://img.shields.io/badge/Email-contatto-EA4335?logo=gmail&logoColor=white)](mailto:sonoyumiii@gmail.com)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-profilo-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/vladyslav-shokun/)
 
 > 💼 I clienti vi scrivono su Telegram e le risposte si perdono? Preparo un'assistenza come questa per il vostro team.
 
@@ -274,6 +276,7 @@ src/support_desk/
 
 [![Telegram](https://img.shields.io/badge/Telegram-написати-2CA5E0?logo=telegram&logoColor=white)](https://t.me/sonoyumiii)
 [![Email](https://img.shields.io/badge/Email-контакт-EA4335?logo=gmail&logoColor=white)](mailto:sonoyumiii@gmail.com)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-профіль-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/vladyslav-shokun/)
 
 > 💼 Клієнти пишуть вам у Telegram, а відповіді губляться? Налаштую таку підтримку для вашої команди.
 
@@ -355,6 +358,7 @@ src/support_desk/
 
 [![Telegram](https://img.shields.io/badge/Telegram-написать-2CA5E0?logo=telegram&logoColor=white)](https://t.me/sonoyumiii)
 [![Email](https://img.shields.io/badge/Email-контакт-EA4335?logo=gmail&logoColor=white)](mailto:sonoyumiii@gmail.com)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-профиль-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/vladyslav-shokun/)
 
 > 💼 Клиенты пишут вам в Telegram, а ответы теряются? Настрою такую поддержку для вашей команды.
 
