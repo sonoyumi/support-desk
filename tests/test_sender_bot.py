@@ -72,7 +72,7 @@ async def test_permanent_errors_fail_at_once(store, operator_id, bot, tg, settin
 
 async def test_rating_request_has_five_star_buttons(store, operator_id, bot, tg, settings, clock):
     tid, _ = await queued_reply(store, operator_id)
-    await store.close_ticket(tid, NOW, rating_text=texts.RATING_REQUEST.format(ticket=tid))
+    await store.close_ticket(tid, NOW, rating_text=texts.t("ru", "rating_request", ticket=tid))
     await Sender(store, bot, settings, clock).tick()
     rating = tg.sent()[-1]
     buttons = [b for row in rating.reply_markup.inline_keyboard for b in row]
@@ -118,7 +118,7 @@ async def test_too_long_message_is_refused(customer, tg, store):
 
 async def test_new_command_and_start(customer, tg, store):
     await customer.say("/new")
-    assert tg.sent()[-1].text == texts.NOTHING_TO_CLOSE
+    assert tg.sent()[-1].text == texts.t("ru", "nothing_to_close")
     await customer.say("вопрос")
     await customer.say("/new")
     assert "№1 закрыто" in tg.sent()[-1].text
@@ -133,7 +133,21 @@ async def test_rating_button(customer, tg, store):
     await customer.press(Rate(ticket=1, score=1).pack())
     assert (await store.get_ticket(1))["rating"] == 5
     answers = [c.text for c in tg.calls if type(c).__name__ == "AnswerCallbackQuery"]
-    assert answers == [texts.RATING_THANKS, texts.RATING_ALREADY]
+    assert answers == [texts.t("ru", "rating_thanks"), texts.t("ru", "rating_already")]
+
+
+@pytest.mark.parametrize("code, expected", [("it", "Richiesta n. 1 ricevuta"), ("en-GB", "Request #1 received"),
+                                            ("uk", "Звернення №1 прийнято"), ("de", "Request #1 received")])
+async def test_bot_speaks_the_customer_language(store, settings, clock, bot, tg, code, expected):
+    from aiogram import Dispatcher
+    from conftest import Customer
+
+    from support_desk.bot import make_router
+    dp = Dispatcher()
+    dp.include_router(make_router(store, settings, clock))
+    await Customer(dp, bot, lang=code).say("help")
+    assert tg.sent()[0].text.startswith(expected)
+    assert (await store.get_ticket(1))["lang"] == ("en" if code in ("en-GB", "de") else code)
 
 
 async def test_group_chats_are_ignored(store, settings, clock, bot, tg):

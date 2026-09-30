@@ -70,33 +70,38 @@ def make_router(store: Store, settings: Settings, clock: Callable[[], float] = t
     router = Router(name="customers")
     router.message.filter(F.chat.type == ChatType.PRIVATE)
 
+    def lang(message: Message | CallbackQuery) -> str:
+        return texts.lang_of(message.from_user.language_code if message.from_user else None)
+
     @router.message(CommandStart())
     async def start(message: Message) -> None:
-        await message.answer(texts.GREETING.format(company=texts.escape(settings.company_name)))
+        await message.answer(texts.t(lang(message), "greeting", company=texts.escape(settings.company_name)))
 
     @router.message(Command("new"))
     async def new(message: Message) -> None:
         ticket = await store.close_by_customer(message.from_user.id, clock())
-        await message.answer(texts.NOTHING_TO_CLOSE if ticket is None
-                             else texts.TICKET_CLOSED_BY_CUSTOMER.format(ticket=ticket))
+        await message.answer(texts.t(lang(message), "nothing_to_close") if ticket is None
+                             else texts.t(lang(message), "closed_by_customer", ticket=ticket))
 
     @router.message()
     async def incoming(message: Message, bot: Bot) -> None:
         described = describe(message)
         if described is None:
-            await message.answer(texts.UNSUPPORTED)
+            await message.answer(texts.t(lang(message), "unsupported"))
             return
         text, attachment = described
         if len(text) > settings.max_message_chars:
-            await message.answer(texts.TOO_LONG.format(length=len(text), limit=settings.max_message_chars))
+            await message.answer(texts.t(lang(message), "too_long", length=len(text),
+                                         limit=settings.max_message_chars))
             return
         user = message.from_user
         result = await store.add_incoming(
             tg_id=user.id, name=user.full_name, username=user.username, text=text, attachment=attachment,
-            tg_message_id=message.message_id, now=clock(), sla_minutes=settings.sla_first_reply_minutes)
+            tg_message_id=message.message_id, now=clock(), sla_minutes=settings.sla_first_reply_minutes,
+            lang=lang(message))
         if result.new_ticket:
-            await message.answer(texts.TICKET_CREATED.format(ticket=result.ticket_id,
-                                                             sla=settings.sla_first_reply_minutes))
+            await message.answer(texts.t(lang(message), "ticket_created", ticket=result.ticket_id,
+                                         sla=settings.sla_first_reply_minutes))
             await notify_operators(bot, settings, texts.OPS_NEW_TICKET.format(
                 ticket=result.ticket_id, customer=user.full_name, subject=text[:120],
                 url=f"{settings.panel_url}/tickets/{result.ticket_id}"))
@@ -104,7 +109,7 @@ def make_router(store: Store, settings: Settings, clock: Callable[[], float] = t
     @router.callback_query(Rate.filter())
     async def rate(callback: CallbackQuery, callback_data: Rate) -> None:
         ok = await store.set_rating(callback_data.ticket, callback.from_user.id, callback_data.score)
-        await callback.answer(texts.RATING_THANKS if ok else texts.RATING_ALREADY)
+        await callback.answer(texts.t(lang(callback), "rating_thanks" if ok else "rating_already"))
         if ok and isinstance(callback.message, Message):
             await callback.message.edit_text(
                 f"{texts.escape(callback.message.text or '')}\n\n{'⭐' * callback_data.score}", reply_markup=None)

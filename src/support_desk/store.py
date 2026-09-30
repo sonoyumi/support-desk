@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS customers (
     tg_id INTEGER NOT NULL UNIQUE,
     name TEXT NOT NULL,
     username TEXT,
+    lang TEXT NOT NULL DEFAULT 'en',
     created_at REAL NOT NULL
 );
 CREATE TABLE IF NOT EXISTS operators (
@@ -187,13 +188,13 @@ class Store:
     # ------------------------------------------------------------------ customers → tickets
     async def add_incoming(self, *, tg_id: int, name: str, username: str | None, text: str,
                            attachment: str | None, tg_message_id: int | None, now: float,
-                           sla_minutes: int) -> Incoming:
+                           sla_minutes: int, lang: str = "en") -> Incoming:
         """A customer message: append to the active ticket or open a new one."""
         async with self._tx() as db:
             await db.execute(
-                "INSERT INTO customers (tg_id, name, username, created_at) VALUES (?, ?, ?, ?) "
-                "ON CONFLICT(tg_id) DO UPDATE SET name = excluded.name, username = excluded.username",
-                (tg_id, name, username, now))
+                "INSERT INTO customers (tg_id, name, username, lang, created_at) VALUES (?, ?, ?, ?, ?) "
+                "ON CONFLICT(tg_id) DO UPDATE SET name = excluded.name, username = excluded.username, "
+                "lang = excluded.lang", (tg_id, name, username, lang, now))
             async with db.execute("SELECT id FROM customers WHERE tg_id = ?", (tg_id,)) as cur:
                 customer_id = (await cur.fetchone())["id"]
             async with db.execute("SELECT id, status FROM tickets WHERE customer_id = ? AND status != 'closed'",
@@ -351,20 +352,24 @@ class Store:
                 "AND sla_notified = 0 RETURNING id, subject, sla_due_at", (now,)) as cur:
                 return sorted(await cur.fetchall(), key=lambda r: r["id"])
 
-    async def auto_close(self, now: float, hours: int, rating_template: str | None) -> list[int]:
+    async def auto_close(self, now: float, hours: int,
+                         rating_text: Callable[[int, str], str] | None = None) -> list[int]:
         """Close tickets that have waited for the customer longer than ``hours``.
 
-        ``rating_template`` may contain {ticket}; a rating request is queued for every closed ticket."""
+        ``rating_text(ticket_id, customer_lang)`` builds the rating request queued for each closed ticket."""
         async with self._tx() as db:
             async with db.execute(
                 "UPDATE tickets SET status = 'closed', closed_at = ?, closed_by = 'auto', updated_at = ? "
                 "WHERE status = 'waiting' AND updated_at < ? RETURNING id", (now, now, now - hours * 3600)) as cur:
                 ids = sorted(r["id"] for r in await cur.fetchall())
-            if rating_template:
+            if rating_text:
                 for tid in ids:
+                    async with db.execute("SELECT c.lang FROM tickets t JOIN customers c ON c.id = t.customer_id "
+                                          "WHERE t.id = ?", (tid,)) as cur:
+                        lang = (await cur.fetchone())["lang"]
                     await db.execute("INSERT INTO messages (ticket_id, kind, text, created_at, delivery, "
                                      "next_attempt_at) VALUES (?, 'rating', ?, ?, 'pending', ?)",
-                                     (tid, rating_template.format(ticket=tid), now, now))
+                                     (tid, rating_text(tid, lang), now, now))
             return ids
 
     # ------------------------------------------------------------------ reading for the panel
@@ -406,7 +411,7 @@ class Store:
         order = "t.updated_at DESC" if flt in ("closed", "all") else "COALESCE(t.sla_due_at, t.updated_at) ASC"
         return await self._all(
             "SELECT t.*, c.name AS customer, c.username, o.name AS assignee, "
-            "(SELECT COUNT(*) FROM messages m WHERE m.ticket_id = t.id AND m.kind = 'in') AS incoming, "
+            "(SELECT COUNT(*) FROM messages m WHERE m.ticket_id = t.id AND m.kind IN ('in', 'out')) AS messages, "
             "(SELECT text FROM messages m WHERE m.ticket_id = t.id AND m.kind IN ('in', 'out') "
             " ORDER BY m.id DESC LIMIT 1) AS last_text "
             "FROM tickets t JOIN customers c ON c.id = t.customer_id LEFT JOIN operators o ON o.id = t.assignee_id "
@@ -414,7 +419,7 @@ class Store:
 
     async def get_ticket(self, ticket_id: int) -> aiosqlite.Row:
         row = await self._one(
-            "SELECT t.*, c.name AS customer, c.username, c.tg_id, o.name AS assignee, "
+            "SELECT t.*, c.name AS customer, c.username, c.tg_id, c.lang, o.name AS assignee, "
             "(SELECT COUNT(*) FROM tickets t2 WHERE t2.customer_id = t.customer_id) AS customer_tickets "
             "FROM tickets t JOIN customers c ON c.id = t.customer_id LEFT JOIN operators o ON o.id = t.assignee_id "
             "WHERE t.id = ?", (ticket_id,))

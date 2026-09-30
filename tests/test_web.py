@@ -102,6 +102,14 @@ async def test_reply_and_close_queues_a_rating_request(logged_in, store):
     assert "err=" in r.headers["location"]  # closed: nothing sent
 
 
+async def test_rating_request_is_in_the_customer_language(logged_in, store):
+    r = await store.add_incoming(tg_id=77, name="Marta Russo", username=None, text="vetro rotto", attachment=None,
+                                 tg_message_id=1, now=NOW, sla_minutes=30, lang="it")
+    await logged_in.post(f"/tickets/{r.ticket_id}/close", data={"csrf": logged_in.csrf, "ask_rating": "1"})
+    rating = (await store.messages(r.ticket_id))[-1]
+    assert rating["kind"] == "rating" and rating["text"].startswith(f"Richiesta n. {r.ticket_id} chiusa")
+
+
 async def test_close_without_rating_and_reopen(logged_in, store):
     tid = await new_ticket(store)
     await logged_in.post(f"/tickets/{tid}/close", data={"csrf": logged_in.csrf})

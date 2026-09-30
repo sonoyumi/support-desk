@@ -99,9 +99,10 @@ def bot(tg) -> Bot:
 class Customer:
     """Sends updates through the REAL aiogram Dispatcher with our router."""
 
-    def __init__(self, dp: Dispatcher, bot: Bot, user_id: int = 42, name: str = "Anna", chat_type: str = "private"):
+    def __init__(self, dp: Dispatcher, bot: Bot, user_id: int = 42, name: str = "Anna", chat_type: str = "private",
+                 lang: str = "ru"):
         self.dp, self.bot = dp, bot
-        self.user = User(id=user_id, is_bot=False, first_name=name, username=name.lower())
+        self.user = User(id=user_id, is_bot=False, first_name=name, username=name.lower(), language_code=lang)
         self.chat = Chat(id=user_id if chat_type == "private" else -5000, type=chat_type)
         self.update_id = 0
         self.msg_id = 0

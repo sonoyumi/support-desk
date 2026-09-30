@@ -34,6 +34,10 @@ BASE_DELAY = 5.0
 MAX_DELAY = 600.0
 
 
+def rating_request(ticket_id: int, lang: str) -> str:
+    return texts.t(lang, "rating_request", ticket=ticket_id)
+
+
 def backoff(attempt: int, rnd: Callable[[], float] = random.random) -> float:
     """5 s, 10 s, 20 s … ±20 % jitter; the ceiling is applied LAST, so jitter never exceeds it."""
     delay = BASE_DELAY * 2 ** (attempt - 1)
@@ -86,7 +90,7 @@ class Sender:
             await notify_operators(self.bot, self.settings, texts.OPS_SLA.format(
                 ticket=row["id"], sla=self.settings.sla_first_reply_minutes, subject=row["subject"],
                 url=f"{self.settings.panel_url}/tickets/{row['id']}"))
-        await self.store.auto_close(now, self.settings.auto_close_hours, texts.RATING_REQUEST)
+        await self.store.auto_close(now, self.settings.auto_close_hours, rating_request)
 
     async def run(self, stop: asyncio.Event, poll: float = 1.0) -> None:
         last_rules = 0.0

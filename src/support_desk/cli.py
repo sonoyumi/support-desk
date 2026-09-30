@@ -15,11 +15,12 @@ from .store import Conflict, Store
 
 log = logging.getLogger("support_desk")
 
+# Replies go to customers, so the ready-made ones are in Italian; edit them on the «Шаблоны» page.
 DEFAULT_CANNED = {
-    "Приветствие": "Здравствуйте, {name}! Меня зовут {operator}, я помогу с обращением №{ticket}.",
-    "Нужны детали": "{name}, уточните, пожалуйста, номер заказа и пришлите фото или скриншот проблемы.",
-    "Передали специалисту": "Передал ваш вопрос специалисту. Ответим сегодня до 18:00.",
-    "Решено": "Рад, что всё получилось! Если будут вопросы — просто напишите сюда.",
+    "Saluto": "Buongiorno {name}, sono {operator} dell'assistenza. Mi occupo della sua richiesta n. {ticket}.",
+    "Servono dettagli": "{name}, può indicarmi il numero d'ordine e inviare una foto o uno screenshot del problema?",
+    "Passato al reparto": "Ho inoltrato la richiesta al reparto competente: le rispondiamo oggi entro le 18:00.",
+    "Risolto": "Sono contento che sia tutto a posto! Per qualsiasi domanda scriva pure qui.",
 }
 
 
@@ -89,30 +90,32 @@ async def _demo(store: Store, settings: Settings) -> str:
     ops = {}
     for login, name in (("giulia", "Giulia Rossi"), ("marco", "Marco Bianchi")):
         try:
-            ops[login] = await store.add_operator(login, name, security.hash_password("demo-password-123"), now - 86400)
+            ops[login] = await store.add_operator(login, name, security.hash_password("demo-password-123"), now - 86400,
+                                                  admin=login == "giulia")
         except Conflict:
             ops[login] = (await store.operator_by_login(login))["id"]
     for title, body in DEFAULT_CANNED.items():
         await store.add_canned(title, body)
     script = [
-        (910001, "Anna Ferrari", "annaf", "Здравствуйте! Заказ №4821 не пришёл, трекинг не обновляется с понедельника.",
-         -95, [("out", "giulia", -80, "Здравствуйте, Anna! Проверила — посылка на складе в Вероне, "
-                                      "курьер привезёт завтра до 14:00."),
-               ("in", None, -30, "Спасибо! А можно доставить после 18:00?")]),
-        (910002, "Luca Moretti", None, "Не могу войти в личный кабинет: пишет «неверный пароль», хотя я его сменил.",
-         -52, []),
-        (910003, "Olena Shevchenko", "olena_s", "Добрый день, хочу вернуть куртку, размер не подошёл. Как оформить?",
-         -18, []),
-        (910004, "Paolo Greco", "pgreco", "Оплатил картой, деньги списались дважды 😟",
-         -8, [("note", "marco", -6, "Проверить в Stripe платёж от 30.09, похоже на повторное списание.")]),
-        (910005, "Sara Conti", "saraconti", "Подскажите, есть ли доставка в Больцано?",
-         -300, [("out", "marco", -290, "Да, по Больцано доставляем за 1 день, бесплатно от 50 €."),
-                ("in", None, -285, "Отлично, спасибо!")]),
+        (910001, "Anna Ferrari", "annaf", "it",
+         "Buongiorno! L'ordine 4821 non è ancora arrivato, il tracking è fermo da lunedì.",
+         -95, [("out", "giulia", -80, "Buongiorno Anna! Ho controllato: il pacco è nel magazzino di Verona, "
+                                      "il corriere lo consegna domani entro le 14:00."),
+               ("in", None, -30, "Grazie! Si può consegnare dopo le 18:00?")]),
+        (910002, "Luca Moretti", None, "it",
+         "Non riesco ad accedere all'area clienti: dice «password errata» anche dopo il cambio.", -52, []),
+        (910003, "Olena Shevchenko", "olena_s", "uk",
+         "Добрий день! Хочу повернути куртку, не підійшов розмір. Як це оформити?", -18, []),
+        (910004, "Paolo Greco", "pgreco", "it", "Ho pagato con la carta e mi hanno addebitato due volte 😟",
+         -8, [("note", "marco", -6, "Controllare in Stripe il pagamento del 30/09: sembra un doppio addebito.")]),
+        (910005, "Sara Conti", "saraconti", "it", "Fate consegne a Bolzano?",
+         -300, [("out", "marco", -290, "Sì, a Bolzano consegniamo in 1 giorno, gratis sopra i 50 €."),
+                ("in", None, -285, "Perfetto, grazie!")]),
     ]
-    for tg, name, user, first, minutes, rest in script:
+    for tg, name, user, lang, first, minutes, rest in script:
         inc = await store.add_incoming(tg_id=tg, name=name, username=user, text=first, attachment=None,
                                        tg_message_id=None, now=now + minutes * 60,
-                                       sla_minutes=settings.sla_first_reply_minutes)
+                                       sla_minutes=settings.sla_first_reply_minutes, lang=lang)
         for kind, op, m, text in rest:
             at = now + m * 60
             if kind == "out":
@@ -121,7 +124,8 @@ async def _demo(store: Store, settings: Settings) -> str:
                 await store.add_note(inc.ticket_id, ops[op], text, at)
             else:
                 await store.add_incoming(tg_id=tg, name=name, username=user, text=text, attachment=None,
-                                         tg_message_id=None, now=at, sla_minutes=settings.sla_first_reply_minutes)
+                                         tg_message_id=None, now=at, sla_minutes=settings.sla_first_reply_minutes,
+                                         lang=lang)
         if tg == 910005:
             await store.close_ticket(inc.ticket_id, now - 280 * 60, by="operator")
             await store.set_rating(inc.ticket_id, tg, 5)

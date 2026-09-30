@@ -24,7 +24,7 @@
     <tr data-href="/tickets/{{ r['id'] }}">
       <td class="num"><a href="/tickets/{{ r['id'] }}">#{{ r['id'] }}</a></td>
       <td><b>{{ r['customer'] }}</b>{% if r['username'] %}<br><span class="muted">@{{ r['username'] }}</span>{% endif %}</td>
-      <td class="subject"><b>{{ r['subject'] }}</b><br><span class="muted">{{ (r['last_text'] or '')[:110] }}</span></td>
+      <td class="subject"><b>{{ r['subject'] }}</b>{% if r['messages'] > 1 %}<br><span class="muted">{{ (r['last_text'] or '')[:110] }}</span>{% endif %}</td>
       <td><span class="st st-{{ r['status'] }}">{{ STATUS[r['status']] }}</span></td>
       <td>{{ r['assignee'] or '—' }}</td>
       <td>{% if label %}<span class="sla {{ cls }}">{{ label }}</span>{% elif r['rating'] %}{{ '⭐' * r['rating'] }}{% else %}<span class="muted">—</span>{% endif %}</td>

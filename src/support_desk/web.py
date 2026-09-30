@@ -103,6 +103,10 @@ def create_app(store: Store, settings: Settings, clock: Callable[[], float] = ti
         return templates.TemplateResponse(request, name, {
             "me": op, "csrf": security.csrf_token(settings.secret_key, cookie), "now": clock(), **ctx})
 
+    async def rating(ticket_id: int) -> str:
+        """Rating request in the customer's language."""
+        return texts.t((await store.get_ticket(ticket_id))["lang"], "rating_request", ticket=ticket_id)
+
     def back(ticket_id: int, err: str | None = None) -> RedirectResponse:
         url = f"/tickets/{ticket_id}" + (f"?err={quote(err)}" if err else "")
         return RedirectResponse(url, status_code=303)
@@ -176,8 +180,7 @@ def create_app(store: Store, settings: Settings, clock: Callable[[], float] = ti
         try:
             await store.add_reply(ticket_id, op["id"], text, clock())
             if close:
-                await store.close_ticket(ticket_id, clock(), by="operator",
-                                  rating_text=texts.RATING_REQUEST.format(ticket=ticket_id))
+                await store.close_ticket(ticket_id, clock(), by="operator", rating_text=await rating(ticket_id))
         except Conflict:
             return back(ticket_id, "Обращение закрыто — ответ не отправлен.")
         return back(ticket_id)
@@ -206,7 +209,7 @@ def create_app(store: Store, settings: Settings, clock: Callable[[], float] = ti
         check_csrf(request, csrf)
         try:
             await store.close_ticket(ticket_id, clock(), by="operator",
-                              rating_text=texts.RATING_REQUEST.format(ticket=ticket_id) if ask_rating else None)
+                                    rating_text=await rating(ticket_id) if ask_rating else None)
         except Conflict:
             return back(ticket_id, "Обращение уже закрыто.")
         return back(ticket_id)

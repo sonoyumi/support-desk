@@ -7,7 +7,7 @@ from support_desk.store import Conflict, build_query, subject_from
 
 async def incoming(store, text="Заказ не пришёл", tg=42, name="Anna Ferrari", at=NOW, **kw):
     return await store.add_incoming(tg_id=tg, name=name, username="annaf", text=text, attachment=kw.get("att"),
-                                    tg_message_id=1, now=at, sla_minutes=30)
+                                    tg_message_id=1, now=at, sla_minutes=30, lang=kw.get("lang", "it"))
 
 
 async def test_first_message_opens_a_ticket_with_sla(store):
@@ -151,10 +151,13 @@ async def test_sla_announced_once_and_auto_close_queues_rating(store, operator_i
     [row] = await store.overdue_to_notify(NOW + 31 * 60)
     assert row["id"] == late.ticket_id
     assert await store.overdue_to_notify(NOW + 40 * 60) == []  # announced only once
-    assert await store.auto_close(NOW + 47 * 3600, 48, "№{ticket}?") == []
-    assert await store.auto_close(NOW + 49 * 3600, 48, "Обращение №{ticket} закрыто") == [idle.ticket_id]
+    def text(tid, lang):
+        return f"#{tid} closed ({lang})"
+
+    assert await store.auto_close(NOW + 47 * 3600, 48, text) == []
+    assert await store.auto_close(NOW + 49 * 3600, 48, text) == [idle.ticket_id]
     rating = [m for m in await store.messages(idle.ticket_id) if m["kind"] == "rating"]
-    assert rating[0]["text"] == f"Обращение №{idle.ticket_id} закрыто" and rating[0]["delivery"] == "pending"
+    assert rating[0]["text"] == f"#{idle.ticket_id} closed (it)" and rating[0]["delivery"] == "pending"
     assert (await store.get_ticket(idle.ticket_id))["closed_by"] == "auto"
 
 
